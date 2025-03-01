@@ -1,20 +1,31 @@
 import jwt from 'jsonwebtoken';
-import User from '../models/userModal.js';
-import dotenv from "dotenv";
-dotenv.config();
+import dotenv from 'dotenv';
+dotenv.config()
+export const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return res.status(401).json({ message: "No token provided" });
+    }
 
-export const auth=async(req,res,next)=>{
-const authHeader=req.headers.authorization;
+    const token = authHeader.split(" ")[1];
 
-if(!authHeader){
-    return res.status(401).json({message:"Authorization header missing"});
+    jwt.verify(token, process.env.JWT_SECRET_KEY, (err, decoded) => {
+        if (err) {
+            console.error("JWT Verification Error:", err);
+            return res.status(403).json({ message: "Invalid or expired token" });
+        }
 
-}
-const token=authHeader.split(" ")[1];
+        req.user = decoded; // Attach user data to the request
+        next();
+    });
+};
 
-if(!token){
-    return res.status(401).json({message:"Token missing"});
 
-}
-
-}
+export const authorize = (role) => {
+    return (req, res, next) => {
+        if (req.user.userRole !== "admin") {
+            return res.status(403).json('You do not have permission to perform this action');
+        }
+        next();
+    };
+};
